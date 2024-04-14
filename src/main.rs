@@ -44,22 +44,15 @@ fn main() {
         .run();
 }
 
-const WIDTH: usize = 100;
+const WIDTH: usize = 200;
 const HEIGHT: usize = 100;
 const TILE_SIZE: f32 = 8.0;
 
-fn world_mesh(
-    mut commands: Commands,
-    // We will add a new Mesh for the star being created
-    meshes: Res<Assets<Mesh>>,
-) {
+fn world_mesh(mut commands: Commands, meshes: Res<Assets<Mesh>>) {
     let world_mesh_handle = Mesh2dHandle(meshes.reserve_handle());
     commands.insert_resource(WorldMesh(world_mesh_handle.clone()));
-    // We can now spawn the entities for the star and the camera
     commands.spawn((
-        // We use a marker component to identify the custom colored meshes
         WorldMesh2d,
-        // The `Handle<Mesh>` needs to be wrapped in a `Mesh2dHandle` to use 2d rendering instead of 3d
         world_mesh_handle,
         // This bundle's components are needed for something to be rendered
         SpatialBundle::INHERITED_IDENTITY,
