@@ -1,3 +1,5 @@
+use bevy::math::Vec2;
+
 use self::world_gen::Wave;
 
 #[derive(Debug)]
@@ -53,6 +55,33 @@ impl World {
             },
         ];
         world_gen::generate_world(width, height, &worldgen_config)
+    }
+
+    pub fn fill_radius(
+        &mut self,
+        explosion_x: isize,
+        explosion_y: isize,
+        radius: f32,
+        tile: WorldTile,
+    ) {
+        let explosion_pos = Vec2::new(explosion_x as f32, explosion_y as f32);
+        let radius_int = (radius + 0.5) as isize;
+        for x in (explosion_x - radius_int)..(explosion_x + radius_int) {
+            if x < 0 || x >= self.width as isize {
+                continue;
+            }
+            for y in (explosion_y - radius_int)..(explosion_y + radius_int) {
+                if y < 0 || y >= self.height as isize {
+                    continue;
+                }
+
+                let pos = Vec2::new(x as f32, y as f32);
+                let distance = pos.distance(explosion_pos);
+                if distance <= radius {
+                    self.set(x, y, tile);
+                }
+            }
+        }
     }
 
     pub fn set(&mut self, x: isize, y: isize, tile: WorldTile) {

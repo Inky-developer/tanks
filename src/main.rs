@@ -1,9 +1,8 @@
 mod world;
 mod world_mesh;
 
-use std::ops::Deref;
-
 use bevy::{
+    input::mouse::MouseWheel,
     prelude::*,
     render::{
         mesh::{Indices, MeshVertexAttribute},
@@ -37,10 +36,7 @@ fn main() {
         ))
         .insert_resource(GameWorld(World::generate(WIDTH, HEIGHT)))
         .add_systems(Startup, world_mesh)
-        .add_systems(
-            Update,
-            (set_block, update_world_mesh, show_cursor_selection),
-        )
+        .add_systems(Update, (input, update_world_mesh, show_cursor_selection))
         .run();
 }
 
@@ -79,7 +75,7 @@ fn update_world_mesh(
         return;
     }
 
-    info!("World has changed!");
+    trace!("World has changed!");
 
     let Some(world_mesh_handle) = world_mesh_handle else {
         return;
@@ -89,25 +85,80 @@ fn update_world_mesh(
     meshes.insert(&world_mesh_handle.0 .0, mesh);
 }
 
-/// This system allows users to place tiles in the world
-fn set_block(
-    mut world_tile: Local<WorldTile>,
+#[derive(Debug, Clone, Copy)]
+struct WorldAction {
+    pub kind: WorldActionKind,
+    pub power: f32,
+}
+
+impl WorldAction {
+    pub fn perform(&self, world: &mut World, x: isize, y: isize) {
+        self.kind.perform(world, x, y, self.power)
+    }
+
+    pub fn next(self) -> Self {
+        Self {
+            kind: self.kind.next(),
+            ..self
+        }
+    }
+}
+
+impl Default for WorldAction {
+    fn default() -> Self {
+        Self {
+            kind: WorldActionKind::default(),
+            power: 1.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+enum WorldActionKind {
+    PlaceAir,
+    #[default]
+    PlaceTile,
+}
+
+impl WorldActionKind {
+    fn perform(&self, world: &mut World, x: isize, y: isize, power: f32) {
+        use WorldActionKind::*;
+
+        match self {
+            PlaceAir => world.fill_radius(x, y, power, WorldTile::Air),
+            PlaceTile => world.fill_radius(x, y, power, WorldTile::Dirt),
+        }
+    }
+
+    fn next(self) -> Self {
+        use WorldActionKind::*;
+        match self {
+            PlaceAir => PlaceTile,
+            PlaceTile => PlaceAir,
+        }
+    }
+}
+
+/// This system allows users to modify the world
+fn input(
+    mut action: Local<WorldAction>,
     mut world: ResMut<GameWorld>,
     buttons: Res<ButtonInput<MouseButton>>,
+    mut scroll_event_reader: EventReader<MouseWheel>,
     windows: Query<&Window, With<PrimaryWindow>>,
 ) {
     if buttons.just_pressed(MouseButton::Right) {
-        let new_tile = match world_tile.deref() {
-            WorldTile::Air => WorldTile::Dirt,
-            WorldTile::Dirt => WorldTile::Air,
-        };
-        *world_tile = new_tile;
+        *action = action.next();
+        info!("Switched action to {action:?}");
+    }
+    for event in scroll_event_reader.read() {
+        action.power = f32::max(action.power + event.y, 1.0);
     }
     if buttons.pressed(MouseButton::Left) {
         let window = windows.single();
         if let Some(mouse_pos) = window.cursor_position() {
             let (x, y) = screen_coords_to_world(mouse_pos, window.height());
-            world.0.set(x, y, *world_tile.deref());
+            action.perform(&mut world.0, x, y);
         }
     }
 }
