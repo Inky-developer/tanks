@@ -1,3 +1,5 @@
+use self::world_gen::Wave;
+
 #[derive(Debug)]
 pub struct World {
     pub width: usize,
@@ -28,16 +30,29 @@ impl World {
     }
 
     pub fn generate(width: usize, height: usize) -> Self {
-        let mut world = Self::new(width, height);
-        for x in 0..world.width {
-            let height = ((x as f32 * 0.05).cos() * height as f32) as usize;
-            for y in 0..(usize::min(world.height, height)) {
-                // for y in 0..x {
-                world.set(x as isize, y as isize, WorldTile::Dirt);
-            }
-        }
-
-        world
+        let w = width as f32;
+        let h = height as f32;
+        let worldgen_config = [
+            Wave {
+                height: h * 0.25,
+                speed: std::f32::consts::PI / w,
+                off_y: h * 0.3,
+                off_x: 0.0,
+            },
+            Wave {
+                height: h * 0.1,
+                speed: std::f32::consts::PI / w * 4.0,
+                off_y: 0.0,
+                off_x: std::f32::consts::PI,
+            },
+            Wave {
+                height: h * 0.015,
+                speed: 0.3,
+                off_y: 0.0,
+                off_x: 42.0,
+            },
+        ];
+        world_gen::generate_world(width, height, &worldgen_config)
     }
 
     pub fn set(&mut self, x: isize, y: isize, tile: WorldTile) {
@@ -58,5 +73,35 @@ impl World {
         assert!(y < self.height as isize && y >= 0);
         let idx = x + y * self.width as isize;
         idx as usize
+    }
+}
+
+mod world_gen {
+    use super::World;
+
+    #[derive(Debug, Clone, Copy)]
+    pub(super) struct Wave {
+        pub height: f32,
+        pub speed: f32,
+        pub off_y: f32,
+        pub off_x: f32,
+    }
+
+    impl Wave {
+        fn at_x(&self, x: f32) -> f32 {
+            self.off_y + ((x + self.off_x) * self.speed).sin() * self.height
+        }
+    }
+
+    pub(super) fn generate_world(width: usize, height: usize, waves: &[Wave]) -> World {
+        let mut world = World::new(width, height);
+        for x in 0..world.width {
+            let height: f32 = waves.iter().map(|wave| wave.at_x(x as f32)).sum();
+            for y in 0..(usize::min(world.height, height as usize)) {
+                world.set(x as isize, y as isize, super::WorldTile::Dirt);
+            }
+        }
+
+        world
     }
 }
