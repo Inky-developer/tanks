@@ -1,8 +1,10 @@
+mod debug_plugin;
+mod math;
+mod physics;
 mod world;
 mod world_mesh;
 
 use bevy::{
-    input::mouse::MouseWheel,
     prelude::*,
     render::{
         mesh::{Indices, MeshVertexAttribute},
@@ -10,15 +12,16 @@ use bevy::{
         render_resource::{PrimitiveTopology, VertexFormat},
     },
     sprite::Mesh2dHandle,
-    window::PrimaryWindow,
 };
-use world::{World, WorldTile};
+use debug_plugin::DebugPlugin;
+use physics::PhysicsPlugin;
+use world::World;
 use world_mesh::{WorldMesh2d, WorldMeshPlugin};
 
 #[derive(Resource)]
 pub struct WorldMesh(Mesh2dHandle);
 
-#[derive(Resource)]
+#[derive(Resource, Deref, DerefMut)]
 pub struct GameWorld(World);
 
 fn main() {
@@ -33,10 +36,12 @@ fn main() {
                 ..default()
             }),
             WorldMeshPlugin,
+            PhysicsPlugin,
+            DebugPlugin,
         ))
         .insert_resource(GameWorld(World::generate(WIDTH, HEIGHT)))
-        .add_systems(Startup, world_mesh)
-        .add_systems(Update, (input, update_world_mesh, show_cursor_selection))
+        .add_systems(Startup, setup)
+        .add_systems(Update, update_world_mesh)
         .run();
 }
 
@@ -44,7 +49,7 @@ const WIDTH: usize = 200;
 const HEIGHT: usize = 100;
 const TILE_SIZE: f32 = 8.0;
 
-fn world_mesh(mut commands: Commands, meshes: Res<Assets<Mesh>>) {
+fn setup(mut commands: Commands, meshes: Res<Assets<Mesh>>) {
     let world_mesh_handle = Mesh2dHandle(meshes.reserve_handle());
     commands.insert_resource(WorldMesh(world_mesh_handle.clone()));
     commands.spawn((
@@ -83,104 +88,6 @@ fn update_world_mesh(
 
     let mesh = gen_world_mesh(&world.0);
     meshes.insert(&world_mesh_handle.0 .0, mesh);
-}
-
-#[derive(Debug, Clone, Copy)]
-struct WorldAction {
-    pub kind: WorldActionKind,
-    pub power: f32,
-}
-
-impl WorldAction {
-    pub fn perform(&self, world: &mut World, x: isize, y: isize) {
-        self.kind.perform(world, x, y, self.power)
-    }
-
-    pub fn next(self) -> Self {
-        Self {
-            kind: self.kind.next(),
-            ..self
-        }
-    }
-}
-
-impl Default for WorldAction {
-    fn default() -> Self {
-        Self {
-            kind: WorldActionKind::default(),
-            power: 1.0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-enum WorldActionKind {
-    PlaceAir,
-    #[default]
-    PlaceTile,
-}
-
-impl WorldActionKind {
-    fn perform(&self, world: &mut World, x: isize, y: isize, power: f32) {
-        use WorldActionKind::*;
-
-        match self {
-            PlaceAir => world.fill_radius(x, y, power, WorldTile::Air),
-            PlaceTile => world.fill_radius(x, y, power, WorldTile::Dirt),
-        }
-    }
-
-    fn next(self) -> Self {
-        use WorldActionKind::*;
-        match self {
-            PlaceAir => PlaceTile,
-            PlaceTile => PlaceAir,
-        }
-    }
-}
-
-/// This system allows users to modify the world
-fn input(
-    mut action: Local<WorldAction>,
-    mut world: ResMut<GameWorld>,
-    buttons: Res<ButtonInput<MouseButton>>,
-    mut scroll_event_reader: EventReader<MouseWheel>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-) {
-    if buttons.just_pressed(MouseButton::Right) {
-        *action = action.next();
-        info!("Switched action to {action:?}");
-    }
-    for event in scroll_event_reader.read() {
-        action.power = f32::max(action.power + event.y, 1.0);
-    }
-    if buttons.pressed(MouseButton::Left) {
-        let window = windows.single();
-        if let Some(mouse_pos) = window.cursor_position() {
-            let (x, y) = screen_coords_to_world(mouse_pos, window.height());
-            action.perform(&mut world.0, x, y);
-        }
-    }
-}
-
-/// This system shows a debug outline around the currently selected block
-fn show_cursor_selection(mut gizmos: Gizmos, windows: Query<&Window, With<PrimaryWindow>>) {
-    let window = windows.single();
-    if let Some(mouse_pos) = window.cursor_position() {
-        let (x, y) = screen_coords_to_world(mouse_pos, window.height());
-        gizmos.rect_2d(
-            Vec2::new(x as f32 + 0.5, y as f32 + 0.5) * TILE_SIZE,
-            0.,
-            Vec2::splat(TILE_SIZE),
-            Color::RED,
-        )
-    }
-}
-
-fn screen_coords_to_world(mut pos: Vec2, height: f32) -> (isize, isize) {
-    pos.y = height - pos.y;
-    pos /= TILE_SIZE;
-    (pos.x as isize, pos.y as isize)
 }
 
 /// Builds a mesh from the world

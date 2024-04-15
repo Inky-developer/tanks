@@ -1,4 +1,5 @@
 use bevy::math::Vec2;
+use bevy::prelude::*;
 
 use self::world_gen::Wave;
 
@@ -16,9 +17,21 @@ pub enum WorldTile {
     Dirt,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct RenderedWorldTile {
+    pub pos: (isize, isize),
+    pub tile: WorldTile,
+    // Neighbors going in the order top - left - bottom - right
+    pub neighbors: [WorldTile; 4],
+}
+
 impl WorldTile {
     pub fn is_not_air(self) -> bool {
         !matches!(self, Self::Air)
+    }
+
+    pub fn has_collider(self) -> bool {
+        self.is_not_air()
     }
 }
 
@@ -95,6 +108,43 @@ impl World {
         }
         let idx = self.coords_to_index(x, y);
         self.data[idx]
+    }
+
+    pub fn get_rendered(&self, x: isize, y: isize) -> RenderedWorldTile {
+        let tile = self.get(x, y);
+        let neighbors =
+            [(x, y + 1), (x - 1, y), (x, y - 1), (x + 1, y)].map(|(x, y)| self.get(x, y));
+        RenderedWorldTile {
+            pos: (x, y),
+            tile,
+            neighbors,
+        }
+    }
+
+    pub fn get_rendered_in_rect(&self, rect: Rect) -> impl Iterator<Item = RenderedWorldTile> + '_ {
+        let left_x = (rect.min.x - 1.0) as isize;
+        let bottom_y = (rect.min.y - 1.0) as isize;
+        let width = (rect.width() + 2.0) as isize;
+        let height = (rect.height() + 2.0) as isize;
+        self._get_rendered_in_rect(left_x, bottom_y, width, height)
+    }
+
+    fn _get_rendered_in_rect(
+        &self,
+        left_x: isize,
+        bottom_y: isize,
+        width: isize,
+        height: isize,
+    ) -> impl Iterator<Item = RenderedWorldTile> + '_ {
+        (left_x..(left_x + width)).flat_map(move |x| {
+            (bottom_y..(bottom_y + height)).filter_map(move |y| {
+                if y < 0 || y >= self.height as isize || x < 0 || x >= self.width as isize {
+                    None
+                } else {
+                    Some(self.get_rendered(x, y))
+                }
+            })
+        })
     }
 
     fn coords_to_index(&self, x: isize, y: isize) -> usize {
