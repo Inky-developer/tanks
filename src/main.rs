@@ -30,13 +30,15 @@ fn main() {
     let window_resolution = (WIDTH as f32 * TILE_SIZE, HEIGHT as f32 * TILE_SIZE).into();
     App::new()
         .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    resolution: window_resolution,
+            DefaultPlugins
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        resolution: window_resolution,
+                        ..default()
+                    }),
                     ..default()
-                }),
-                ..default()
-            }),
+                })
+                .set(ImagePlugin::default_nearest()),
             WorldMeshPlugin,
             PhysicsPlugin,
             TankPlugin,
