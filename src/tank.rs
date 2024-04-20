@@ -34,20 +34,18 @@ impl Default for TankBundle {
             spatial_bundle: default(),
             world_transform: default(),
             rigidbody: default(),
-            collider: Collider {
-                size: Vec2::new(8.0, 8.0),
-            },
+            collider: Collider,
             intersection: default(),
         }
     }
 }
 
-fn render_tank(mut gizmos: Gizmos, query: Query<(&Transform, &Collider), With<Tank>>) {
-    for (transform, collider) in query.iter() {
+fn render_tank(mut gizmos: Gizmos, query: Query<&Transform, With<Tank>>) {
+    for transform in query.iter() {
         gizmos.rect_2d(
             transform.translation.xy(),
             0.0,
-            collider.size * TILE_SIZE,
+            transform.scale.xy() * TILE_SIZE,
             Color::WHITE,
         );
     }
@@ -56,13 +54,13 @@ fn render_tank(mut gizmos: Gizmos, query: Query<(&Transform, &Collider), With<Ta
 fn add_texture_to_tanks(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    query: Query<(Entity, &Collider), (Without<Handle<Image>>, With<Tank>)>,
+    query: Query<Entity, (Without<Handle<Image>>, With<Tank>)>,
 ) {
-    for (entity, collider) in query.iter() {
+    for entity in query.iter() {
         commands.entity(entity).insert((
             asset_server.load::<Image>("textures/tank.png"),
             Sprite {
-                custom_size: Some(collider.size * TILE_SIZE),
+                custom_size: Some(Vec2::splat(TILE_SIZE)),
                 ..default()
             },
         ));

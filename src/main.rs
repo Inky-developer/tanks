@@ -65,7 +65,7 @@ fn setup(mut commands: Commands, meshes: Res<Assets<Mesh>>) {
 
     commands.spawn(TankBundle {
         spatial_bundle: SpatialBundle {
-            transform: Transform::from_xyz(250.0, 250.0, 0.0),
+            transform: Transform::from_xyz(250.0, 250.0, 0.0).with_scale(Vec3::splat(8.0)),
             ..default()
         },
         ..default()

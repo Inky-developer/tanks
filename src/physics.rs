@@ -11,11 +11,9 @@ pub struct Rigidbody {
     pub motion: Vec2,
 }
 
-/// Entities with this component and a [`Intersection`] component will have collision detection
+/// Entities with this component and a [`Intersection`] and ['GlobalTransform`] component will have collision detection
 #[derive(Component, Debug)]
-pub struct Collider {
-    pub size: Vec2,
-}
+pub struct Collider;
 
 /// Describes the current intersection of the entity with the world
 #[derive(Component, Debug, Default)]
@@ -83,11 +81,12 @@ fn reset_intersections(mut intersections: Query<&mut Intersection>) {
 
 fn collide_with_world(
     world: Res<GameWorld>,
-    mut query: Query<(&WorldTransform, &Collider, &mut Intersection)>,
+    mut query: Query<(&WorldTransform, &Transform, &mut Intersection), With<Collider>>,
     mut gizmos: Gizmos,
 ) {
-    for (world_transform, collider, mut intersection) in query.iter_mut() {
-        let collider_rect = Rect::from_center_size(world_transform.translation, collider.size);
+    for (world_transform, transform, mut intersection) in query.iter_mut() {
+        let collider_rect =
+            Rect::from_center_size(world_transform.translation, transform.scale.xy());
 
         let mut max_correction = Vec2::ZERO;
         let possible_collisions = world.get_rendered_in_rect(collider_rect);
