@@ -9,7 +9,7 @@ pub struct TankPlugin;
 
 impl Plugin for TankPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, render_tank)
+        app.add_systems(Update, (render_tank, rotate_tank_texture))
             .add_systems(PostUpdate, add_texture_to_tanks);
     }
 }
@@ -48,6 +48,18 @@ fn render_tank(mut gizmos: Gizmos, query: Query<&Transform, With<Tank>>) {
             transform.scale.xy() * TILE_SIZE,
             Color::WHITE,
         );
+    }
+}
+
+fn rotate_tank_texture(
+    mut query: Query<(&mut Sprite, &Rigidbody), (With<Tank>, Changed<Rigidbody>)>,
+) {
+    for (mut sprite, body) in query.iter_mut() {
+        if body.motion.x < 0.0 && !sprite.flip_x {
+            sprite.flip_x = true;
+        } else if body.motion.x > 0.0 && sprite.flip_x {
+            sprite.flip_x = false;
+        }
     }
 }
 
