@@ -143,7 +143,7 @@ type DrawWorlddMesh2d = (
 
 // The custom shader can be inline like here, included from another file at build time
 // using `include_str!()`, or loaded like any other asset with `asset_server.load()`.
-const WORLD_MESH_SHADER: &str = include_str!("../res/shader/world_mesh_2d.wgsl");
+const WORLD_MESH_SHADER: &str = include_str!("../assets/shader/world_mesh_2d.wgsl");
 
 /// Plugin that renders [`WorldMesh2d`]s
 pub struct WorldMeshPlugin;

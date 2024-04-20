@@ -1,7 +1,7 @@
 use bevy::{input::mouse::MouseWheel, prelude::*, window::PrimaryWindow};
 
 use crate::{
-    physics::{Collider, Intersection, Rigidbody, WorldTransform},
+    physics::{Collider, Rigidbody},
     world::{World, WorldTile},
     GameWorld, TILE_SIZE,
 };
@@ -11,39 +11,12 @@ pub struct DebugPlugin;
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup)
-            .add_systems(
-                Update,
-                (draw_debug_collider, move_box, input, show_cursor_selection),
-            )
+            .add_systems(Update, (move_box, input, show_cursor_selection))
             .add_systems(FixedUpdate, let_box_fall);
     }
 }
 
-fn setup(mut commands: Commands) {
-    commands.spawn((
-        SpatialBundle {
-            transform: Transform::from_xyz(520.0, 550.0, 0.0),
-            ..default()
-        },
-        WorldTransform::default(),
-        Rigidbody::default(),
-        Collider {
-            size: Vec2::new(30.0, 30.0),
-        },
-        Intersection::default(),
-    ));
-}
-
-fn draw_debug_collider(mut gizmos: Gizmos, query: Query<(&Transform, &Collider)>) {
-    for (transform, collider) in query.iter() {
-        gizmos.rect_2d(
-            transform.translation.xy(),
-            0.0,
-            collider.size * TILE_SIZE,
-            Color::WHITE,
-        );
-    }
-}
+fn setup() {}
 
 fn let_box_fall(time: Res<Time>, mut colliders: Query<&mut Transform, With<Collider>>) {
     for mut transform in colliders.iter_mut() {

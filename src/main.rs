@@ -1,6 +1,7 @@
 mod debug_plugin;
 mod math;
 mod physics;
+mod tank;
 mod world;
 mod world_mesh;
 
@@ -15,6 +16,7 @@ use bevy::{
 };
 use debug_plugin::DebugPlugin;
 use physics::PhysicsPlugin;
+use tank::{TankBundle, TankPlugin};
 use world::World;
 use world_mesh::{WorldMesh2d, WorldMeshPlugin};
 
@@ -37,9 +39,11 @@ fn main() {
             }),
             WorldMeshPlugin,
             PhysicsPlugin,
+            TankPlugin,
             DebugPlugin,
         ))
         .insert_resource(GameWorld(World::generate(WIDTH, HEIGHT)))
+        .insert_resource(ClearColor(Color::rgb(0.5, 0.8, 0.99)))
         .add_systems(Startup, setup)
         .add_systems(Update, update_world_mesh)
         .run();
@@ -58,6 +62,14 @@ fn setup(mut commands: Commands, meshes: Res<Assets<Mesh>>) {
         // This bundle's components are needed for something to be rendered
         SpatialBundle::INHERITED_IDENTITY,
     ));
+
+    commands.spawn(TankBundle {
+        spatial_bundle: SpatialBundle {
+            transform: Transform::from_xyz(250.0, 250.0, 0.0),
+            ..default()
+        },
+        ..default()
+    });
 
     // Spawn the camera
     commands.spawn(Camera2dBundle {
